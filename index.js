@@ -76,7 +76,7 @@ async function syncAll() {
   console.log(`[${new Date().toISOString()}] Syncing all properties...`);
   for (const propertyId in propertyCache) {
     const entry = propertyCache[propertyId];
-    const reservations = await parseIcal(entry.icalUrl, parseInt(propertyId), entry.name);
+    const reservations = await parseIcal(entry.icalUrl, propertyId, entry.name);
     if (reservations !== null) {
       propertyCache[propertyId].reservations = reservations;
       propertyCache[propertyId].lastSynced = new Date().toISOString();
@@ -119,7 +119,7 @@ app.post("/properties", async (req, res) => {
   };
 
   // Immediately sync this property
-  const reservations = await parseIcal(icalUrl, parseInt(propertyId), name);
+  const reservations = await parseIcal(icalUrl, propertyId, name);
   if (reservations !== null) {
     propertyCache[propertyId].reservations = reservations;
     propertyCache[propertyId].lastSynced = new Date().toISOString();
@@ -146,7 +146,7 @@ app.get("/reservations", (req, res) => {
   for (const pid in propertyCache) {
     const entry = propertyCache[pid];
     syncStatus.push({
-      propertyId: parseInt(pid),
+      propertyId: pid,
       name: entry.name,
       lastSynced: entry.lastSynced,
       reservationCount: entry.reservations.length,
@@ -169,12 +169,18 @@ app.get("/reservations", (req, res) => {
 app.post("/sync", async (req, res) => {
   await syncAll();
   const syncStatus = Object.entries(propertyCache).map(([pid, entry]) => ({
-    propertyId: parseInt(pid),
+    propertyId: pid,
     name: entry.name,
     lastSynced: entry.lastSynced,
     reservationCount: entry.reservations.length,
   }));
   res.json({ success: true, syncStatus });
+});
+
+// Reset all properties
+app.post("/reset", (req, res) => {
+  propertyCache = {};
+  res.json({ success: true, message: "All properties cleared" });
 });
 
 // Remove a property
@@ -193,7 +199,7 @@ app.delete("/properties/:propertyId", (req, res) => {
 // GET /properties
 app.get("/properties", (req, res) => {
   const properties = Object.entries(propertyCache).map(([pid, entry]) => ({
-    propertyId: parseInt(pid),
+    propertyId: pid,
     name: entry.name,
     lastSynced: entry.lastSynced,
     reservationCount: entry.reservations.length,
