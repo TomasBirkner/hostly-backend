@@ -37,6 +37,10 @@ async function parseIcal(icalUrl, propertyId, propertyName) {
 
       if (!checkIn || !checkOut) continue;
 
+      // Include reservations from Jan 1, 2026 onwards (historical sync)
+      const HISTORY_START = new Date("2026-01-01");
+      if (checkOut < HISTORY_START) continue;
+
       // Extract guest name from summary (format: "Reserved - Airbnb (HMXXXXXXXX)")
       // or just use "Airbnb Guest" as fallback
       let guestName = "Airbnb Guest";
@@ -153,8 +157,10 @@ app.get("/reservations", (req, res) => {
     });
 
     if (!propertyId || pid === propertyId) {
-      allReservations = allReservations.concat(entry.reservations);
-    }
+        allReservations = allReservations.concat(
+          entry.reservations.map(r => ({ ...r, propertyName: entry.name }))
+        );
+      }
   }
 
   res.json({
